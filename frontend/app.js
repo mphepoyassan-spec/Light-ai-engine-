@@ -31,44 +31,67 @@ document.addEventListener('DOMContentLoaded', () => {
         typingIndicator.classList.add('hidden');
     };
 
+    const addStreamingMessage = () => {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'assistant');
+        const bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        messageDiv.appendChild(bubble);
+        chatMessages.appendChild(messageDiv);
+        return bubble;
+    };
+
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const message = userInput.value.trim();
 
         if (!message) return;
 
-        // Add user message to UI
         addMessage(message, 'user');
         userInput.value = '';
-
-        // Show typing indicator
         showTyping();
 
         try {
-            const response = await fetch(`${API_URL}/chat`, {
+            const response = await fetch(`${API_URL}/chat/stream`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: message,
-                    session_id: sessionId
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message, session_id: sessionId }),
             });
 
-            const data = await response.json();
+            if (!response.ok) throw new Error('Stream request failed');
 
-            // Hide typing indicator
             hideTyping();
+            const bubble = addStreamingMessage();
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
 
-            if (data.error) {
-                addMessage(`Error: ${data.message}`, 'assistant');
-            } else {
-                addMessage(data.response, 'assistant');
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.slice(6).trim();
+                        if (dataStr === '[DONE]') break;
+
+                        try {
+                            const data = JSON.parse(dataStr);
+                            if (data.text) {
+                                bubble.textContent += data.text;
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing stream chunk', e);
+                        }
+                    }
+                }
             }
         } catch (error) {
             hideTyping();
-            addMessage('Could not connect to the local AI engine. Make sure the backend is running.', 'assistant');
+            addMessage('Could not connect to the local AI engine.', 'assistant');
             console.error('Error:', error);
         }
     });

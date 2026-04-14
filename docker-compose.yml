@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  lightai-engine:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
