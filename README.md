@@ -14,6 +14,7 @@ A lightweight, production-ready local AI system with a FastAPI backend, ONNX Run
   - Response caching for repeated queries.
 - **Modern UI**: Clean, responsive chat interface with dark mode and typing indicators.
 - **Offline Ready**: Runs fully on localhost after initial setup.
+- **Cross-Platform**: Runs on Windows, macOS, and Linux.
 
 ## 📁 Project Structure
 ```
@@ -49,8 +50,14 @@ If no model is found, the system will run in **Mock Mode** for demonstration pur
 *Note: For best results, use a quantized LLM like Phi-3 or Llama-3 exported to ONNX format.*
 
 ### 3. Run the Backend
+On Linux/macOS:
 ```bash
-python3 -m backend.app
+PYTHONPATH=. uvicorn backend.app:app --host 0.0.0.0 --port 8000
+```
+On Windows:
+```cmd
+set PYTHONPATH=.
+uvicorn backend.app:app --host 0.0.0.0 --port 8000
 ```
 The server will start at `http://localhost:8000`.
 

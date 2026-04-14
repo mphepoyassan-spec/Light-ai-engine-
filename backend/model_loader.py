@@ -5,7 +5,9 @@ import os
 import requests
 
 class ModelLoader:
-    def __init__(self, model_path="backend/model.onnx", tokenizer_name="gpt2"):
+    def __init__(self, model_path=None, tokenizer_name="gpt2"):
+        if model_path is None:
+            model_path = os.path.join("backend", "model.onnx")
         self.model_path = model_path
         self.tokenizer_name = tokenizer_name
         self.tokenizer = None
