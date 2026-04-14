@@ -3,9 +3,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('user-input');
     const chatMessages = document.getElementById('chat-messages');
     const typingIndicator = document.getElementById('typing-indicator');
+    const clearBtn = document.getElementById('clear-btn');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
     const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
 
-    const API_URL = 'http://localhost:8000';
+    // Use relative paths if served from the same origin, otherwise fallback to localhost
+    const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+                    ? window.location.origin
+                    : 'http://localhost:8000';
 
     const addMessage = (content, role) => {
         const messageDiv = document.createElement('div');
@@ -20,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        return bubble;
     };
 
     const showTyping = () => {
@@ -45,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showTyping();
 
         try {
+            // Using non-streaming for simplicity in the main UI,
+            // but we could easily switch to streaming here.
             const response = await fetch(`${API_URL}/chat`, {
                 method: 'POST',
                 headers: {
@@ -55,6 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     session_id: sessionId
                 }),
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Server error');
+            }
 
             const data = await response.json();
 
@@ -68,23 +83,45 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             hideTyping();
-            addMessage('Could not connect to the local AI engine. Make sure the backend is running.', 'assistant');
+            addMessage(`Error: ${error.message}. Make sure the backend is running.`, 'assistant');
             console.error('Error:', error);
         }
     });
 
-    // Initial check to see if backend is online
-    fetch(`${API_URL}/`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'online') {
-                console.log('Backend is online');
-                document.getElementById('status-dot').classList.add('online');
+    clearBtn.addEventListener('click', async () => {
+        if (confirm('Clear chat history?')) {
+            try {
+                await fetch(`${API_URL}/clear`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId, message: '' })
+                });
+                chatMessages.innerHTML = '';
+                addMessage("Chat history cleared. How can I help you now?", 'assistant');
+            } catch (error) {
+                console.error('Error clearing history:', error);
             }
-        })
-        .catch(err => {
-            console.error('Backend is offline');
-            document.getElementById('status-dot').classList.remove('online');
-            document.getElementById('status-text').textContent = 'Local Engine Offline';
-        });
+        }
+    });
+
+    // Initial check to see if backend is online
+    const checkStatus = () => {
+        fetch(`${API_URL}/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'online') {
+                    statusDot.className = 'online';
+                    statusText.textContent = 'Local Engine Online';
+                }
+            })
+            .catch(err => {
+                statusDot.className = '';
+                statusText.textContent = 'Local Engine Offline';
+                console.error('Backend is offline');
+            });
+    };
+
+    checkStatus();
+    // Periodically check status
+    setInterval(checkStatus, 10000);
 });

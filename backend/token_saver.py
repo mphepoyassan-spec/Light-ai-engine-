@@ -6,16 +6,19 @@ class TokenSaver:
         self.filler_words = ["uh", "um", "er", "ah", "like", "you know", "basically", "actually"]
 
     def clean_text(self, text):
+        # Remove common filler words (case insensitive)
+        for word in self.filler_words:
+            pattern = re.compile(rf'\s*\b{word}\b\s*', re.IGNORECASE)
+            text = pattern.sub(' ', text)
+
         # Remove extra spaces
         text = " ".join(text.split())
 
-        # Remove common filler words (case insensitive)
-        for word in self.filler_words:
-            pattern = re.compile(rf'\b{word}\b', re.IGNORECASE)
-            text = pattern.sub('', text)
-
         # Remove redundant punctuation
-        text = re.sub(r'([!?.]){2,}', r'\1', text)
+        text = re.sub(r'([!?.,]){2,}', r'\1', text)
+
+        # Remove leading/trailing punctuation that might be left after filler word removal
+        text = re.sub(r'^\W+', '', text)
 
         return text.strip()
 

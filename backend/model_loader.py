@@ -35,7 +35,7 @@ class ModelLoader:
 
     def predict(self, text, max_length=50):
         if not self.is_ready:
-            return f"[Mock Response] You said: {text}"
+            return "I understand your request. [Mock Mode]"
 
         inputs = self.tokenizer(text, return_tensors="np")
         input_ids = inputs["input_ids"].astype(np.int64)
