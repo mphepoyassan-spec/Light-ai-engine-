@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using LightAI.Backend.Models;
 
 namespace LightAI.Backend.Services;
 

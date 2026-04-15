@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
 
-    // Use relative paths if served from the same origin, otherwise fallback to localhost
     const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
                     ? window.location.origin
                     : 'http://localhost:8000';
@@ -25,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.appendChild(bubble);
         chatMessages.appendChild(messageDiv);
 
-        // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return bubble;
     };
@@ -45,17 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!message) return;
 
-        // Add user message to UI
         addMessage(message, 'user');
         userInput.value = '';
 
-        // Show typing indicator
         showTyping();
 
         try {
-            // Using non-streaming for simplicity in the main UI,
-            // but we could easily switch to streaming here.
-            const response = await fetch(`${API_URL}/chat`, {
+            // Using streaming endpoint
+            const response = await fetch(`${API_URL}/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,15 +66,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.message || 'Server error');
             }
 
-            const data = await response.json();
-
-            // Hide typing indicator
             hideTyping();
+            const aiBubble = addMessage('', 'assistant');
 
-            if (data.error) {
-                addMessage(`Error: ${data.message}`, 'assistant');
-            } else {
-                addMessage(data.response, 'assistant');
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunkStr = decoder.decode(value);
+                const lines = chunkStr.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            if (data.error) {
+                                aiBubble.textContent = `Error: ${data.error}`;
+                            } else if (data.chunk) {
+                                aiBubble.textContent += data.chunk;
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE:', e);
+                        }
+                    }
+                }
             }
         } catch (error) {
             hideTyping();
@@ -104,24 +118,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initial check to see if backend is online
     const checkStatus = () => {
         fetch(`${API_URL}/`)
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'online') {
                     statusDot.className = 'online';
-                    statusText.textContent = 'Local Engine Online';
+                    statusText.textContent = `Local Engine Online (${data.lang})`;
                 }
             })
             .catch(err => {
                 statusDot.className = '';
                 statusText.textContent = 'Local Engine Offline';
-                console.error('Backend is offline');
             });
     };
 
     checkStatus();
-    // Periodically check status
     setInterval(checkStatus, 10000);
 });

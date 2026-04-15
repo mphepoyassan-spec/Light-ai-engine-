@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
+using LightAI.Backend.Models;
 
 namespace LightAI.Backend.Services;
 
@@ -8,10 +10,10 @@ public class ResponseCache
     private readonly TimeSpan _ttl;
     private readonly ConcurrentDictionary<string, (string Value, DateTime Timestamp)> _cache = new();
 
-    public ResponseCache(int maxSize = 100, int ttlSeconds = 300)
+    public ResponseCache(IOptions<LightAIOptions> options, int maxSize = 100)
     {
         _maxSize = maxSize;
-        _ttl = TimeSpan.FromSeconds(ttlSeconds);
+        _ttl = TimeSpan.FromSeconds(options.Value.CacheTTLSeconds);
     }
 
     public string? Get(string key)

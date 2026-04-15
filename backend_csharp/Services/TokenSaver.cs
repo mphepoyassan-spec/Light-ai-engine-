@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
+using LightAI.Backend.Models;
 
 namespace LightAI.Backend.Services;
 
@@ -7,34 +9,28 @@ public class TokenSaver
     private readonly int _maxContextMessages;
     private readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
 
-    public TokenSaver(int maxContextMessages = 5)
+    public TokenSaver(IOptions<LightAIOptions> options)
     {
-        _maxContextMessages = maxContextMessages;
+        _maxContextMessages = options.Value.MaxContextMessages;
     }
 
     public string CleanText(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
-        // Remove filler words
         foreach (var word in _fillerWords)
         {
             text = Regex.Replace(text, $@"\s*\b{word}\b\s*", " ", RegexOptions.IgnoreCase);
         }
 
-        // Normalize whitespace
         text = Regex.Replace(text, @"\s+", " ").Trim();
-
-        // Normalize redundant punctuation
         text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
-
-        // Remove leading non-word characters
         text = Regex.Replace(text, @"^\W+", "");
 
         return text.Trim();
     }
 
-    public List<T> TrimContext<T>(List<T> messages)
+    public List<ChatMessage> TrimContext(List<ChatMessage> messages)
     {
         if (messages.Count > _maxContextMessages)
         {
@@ -55,10 +51,4 @@ public class TokenSaver
         prompt += "AI:";
         return prompt;
     }
-}
-
-public class ChatMessage
-{
-    public string Role { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
 }
