@@ -1,23 +1,51 @@
+using Microsoft.Extensions.Options;
+using Microsoft.ML.OnnxRuntime;
+
 namespace LightAI.Backend.Services;
 
 public class ModelLoader
 {
+    private readonly ModelSettings _settings;
     private bool _isReady = false;
+    private InferenceSession? _session;
+
+    public ModelLoader(IOptions<ModelSettings> settings)
+    {
+        _settings = settings.Value;
+    }
 
     public void Load()
     {
-        // Placeholder for ONNX runtime loading
-        _isReady = false; // Stay in mock mode for now
+        try
+        {
+            if (File.Exists(_settings.ModelPath))
+            {
+                _session = new InferenceSession(_settings.ModelPath);
+                _isReady = true;
+                Console.WriteLine($"Model loaded successfully from {_settings.ModelPath}");
+            }
+            else
+            {
+                Console.WriteLine($"Model file not found at {_settings.ModelPath}. Falling back to mock mode.");
+                _isReady = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading model: {ex.Message}. Falling back to mock mode.");
+            _isReady = false;
+        }
     }
 
     public string Predict(string text)
     {
-        if (!_isReady)
+        if (!_isReady || _session == null)
         {
             return "I understand your request. [Mock Mode]";
         }
 
-        // Inference logic would go here
-        return "Inference not implemented in mock mode.";
+        // Real inference logic would go here if we had the model signature
+        // For now, even if session is loaded, we return a mock-like response with a note
+        return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }

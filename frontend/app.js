@@ -53,9 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showTyping();
 
         try {
-            // Using non-streaming for simplicity in the main UI,
-            // but we could easily switch to streaming here.
-            const response = await fetch(`${API_URL}/chat`, {
+            const response = await fetch(`${API_URL}/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,15 +69,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.message || 'Server error');
             }
 
-            const data = await response.json();
-
-            // Hide typing indicator
             hideTyping();
 
-            if (data.error) {
-                addMessage(`Error: ${data.message}`, 'assistant');
-            } else {
-                addMessage(data.response, 'assistant');
+            // Create a bubble for the assistant response
+            const assistantBubble = addMessage('', 'assistant');
+            let fullText = '';
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            if (data.done) break;
+                            fullText += data.chunk;
+                            assistantBubble.textContent = fullText;
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        } catch (e) {
+                            console.error('Error parsing SSE chunk', e);
+                        }
+                    }
+                }
             }
         } catch (error) {
             hideTyping();
