@@ -4,10 +4,20 @@ using Microsoft.Extensions.FileProviders;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.Configure<ModelSettings>(builder.Configuration.GetSection("ModelSettings"));
+
 builder.Services.AddControllers();
 builder.Services.AddSingleton<ModelLoader>();
-builder.Services.AddSingleton<TokenSaver>();
-builder.Services.AddSingleton<ResponseCache>();
+builder.Services.AddSingleton<TokenSaver>(sp =>
+{
+    var settings = builder.Configuration.GetSection("ModelSettings").Get<ModelSettings>();
+    return new TokenSaver(settings?.MaxContextMessages ?? 5);
+});
+builder.Services.AddSingleton<ResponseCache>(sp =>
+{
+    var settings = builder.Configuration.GetSection("ModelSettings").Get<ModelSettings>();
+    return new ResponseCache(100, settings?.CacheTTLSeconds ?? 300);
+});
 builder.Services.AddSingleton<ConversationMemory>();
 
 builder.Services.AddCors(options =>
