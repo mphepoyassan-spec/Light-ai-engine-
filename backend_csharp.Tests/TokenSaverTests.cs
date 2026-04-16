@@ -35,4 +35,26 @@ public class TokenSaverTests
         Assert.Equal(2, result.Count);
         Assert.Equal("2", result[0].Content);
     }
+
+    [Fact]
+    public void CleanText_PreservesLeadingEmojis()
+    {
+        var ts = new TokenSaver();
+        var result = ts.CleanText("🚀 Blast off!");
+        Assert.Equal("🚀 Blast off!", result);
+    }
+
+    [Fact]
+    public void OptimizePrompt_UsesCorrectRoles()
+    {
+        var ts = new TokenSaver();
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage { Role = "user", Content = "Hi" },
+            new ChatMessage { Role = "assistant", Content = "Hello" }
+        };
+        var result = ts.OptimizePrompt(messages);
+        var expected = "User: Hi\nAI: Hello\nAI:";
+        Assert.Equal(expected, result);
+    }
 }

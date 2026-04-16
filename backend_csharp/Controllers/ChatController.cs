@@ -78,9 +78,11 @@ public class ChatController : ControllerBase
             var fullResponse = _modelLoader.Predict(prompt);
             var words = fullResponse.Split(' ');
 
-            foreach (var word in words)
+            for (int i = 0; i < words.Length; i++)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                var word = words[i];
+                var chunkText = (i == words.Length - 1) ? word : word + " ";
+                var chunk = new { chunk = chunkText, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
