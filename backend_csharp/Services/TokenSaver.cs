@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Services;
@@ -28,9 +29,6 @@ public class TokenSaver
         // Normalize redundant punctuation
         text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
 
-        // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
-
         return text.Trim();
     }
 
@@ -45,15 +43,15 @@ public class TokenSaver
 
     public string OptimizePrompt(List<ChatMessage> messages)
     {
-        var prompt = "";
+        var sb = new StringBuilder();
         foreach (var msg in messages)
         {
             var content = CleanText(msg.Content);
-            var role = msg.Role.ToLower() == "user" ? "User" : "AI";
-            prompt += $"{role}: {content}\n";
+            var role = msg.Role.Equals("user", StringComparison.OrdinalIgnoreCase) ? "User" : "AI";
+            sb.Append(role).Append(": ").Append(content).Append('\n');
         }
-        prompt += "AI:";
-        return prompt;
+        sb.Append("AI:");
+        return sb.ToString();
     }
 }
 

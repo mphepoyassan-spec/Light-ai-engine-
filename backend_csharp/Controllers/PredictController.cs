@@ -17,8 +17,20 @@ public class PredictController : ControllerBase
     [HttpPost]
     public IActionResult Predict([FromBody] PredictRequest request)
     {
-        var response = _modelLoader.Predict(request.Text);
-        return Ok(new { prediction = response });
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Text))
+            {
+                return BadRequest(new { error = true, message = "Text cannot be empty", code = 400 });
+            }
+
+            var response = _modelLoader.Predict(request.Text);
+            return Ok(new { prediction = response });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = true, message = ex.Message, code = 500 });
+        }
     }
 }
 
