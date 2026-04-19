@@ -41,11 +41,11 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Returning a user-friendly message for mock mode instead of raw JSON
+            return "I understand your request. This is a simulated response because the local ONNX model is not loaded. [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
