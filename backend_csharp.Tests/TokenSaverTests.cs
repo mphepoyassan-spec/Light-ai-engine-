@@ -35,4 +35,25 @@ public class TokenSaverTests
         Assert.Equal(2, result.Count);
         Assert.Equal("2", result[0].Content);
     }
+
+    [Fact]
+    public void OptimizePrompt_Works()
+    {
+        var ts = new TokenSaver();
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage { Role = "user", Content = "Hello" },
+            new ChatMessage { Role = "assistant", Content = "Hi there" }
+        };
+        var result = ts.OptimizePrompt(messages);
+        Assert.Equal("User: Hello\nAI: Hi there\nAI:", result);
+    }
+
+    [Fact]
+    public void CleanText_HandlesLeadingNonWord()
+    {
+        var ts = new TokenSaver();
+        var result = ts.CleanText("... Hello");
+        Assert.Equal("Hello", result);
+    }
 }

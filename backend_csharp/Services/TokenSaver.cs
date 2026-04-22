@@ -5,7 +5,11 @@ namespace LightAI.Backend.Services;
 public class TokenSaver
 {
     private readonly int _maxContextMessages;
-    private readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
+    private static readonly string[] FillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
+    private static readonly Regex FillerRegex = new Regex($@"\s*\b({string.Join("|", FillerWords)})\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex WhitespaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex PunctuationRegex = new Regex(@"([!?.,]){2,}", RegexOptions.Compiled);
+    private static readonly Regex LeadingNonWordRegex = new Regex(@"^\W+", RegexOptions.Compiled);
 
     public TokenSaver(int maxContextMessages = 5)
     {
@@ -17,19 +21,16 @@ public class TokenSaver
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
         // Remove filler words
-        foreach (var word in _fillerWords)
-        {
-            text = Regex.Replace(text, $@"\s*\b{word}\b\s*", " ", RegexOptions.IgnoreCase);
-        }
+        text = FillerRegex.Replace(text, " ");
 
         // Normalize whitespace
-        text = Regex.Replace(text, @"\s+", " ").Trim();
+        text = WhitespaceRegex.Replace(text, " ").Trim();
 
         // Normalize redundant punctuation
-        text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
+        text = PunctuationRegex.Replace(text, "$1");
 
         // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        text = LeadingNonWordRegex.Replace(text, "");
 
         return text.Trim();
     }
@@ -45,15 +46,15 @@ public class TokenSaver
 
     public string OptimizePrompt(List<ChatMessage> messages)
     {
-        var prompt = "";
+        var sb = new System.Text.StringBuilder();
         foreach (var msg in messages)
         {
             var content = CleanText(msg.Content);
             var role = msg.Role.ToLower() == "user" ? "User" : "AI";
-            prompt += $"{role}: {content}\n";
+            sb.Append(role).Append(": ").Append(content).Append('\n');
         }
-        prompt += "AI:";
-        return prompt;
+        sb.Append("AI:");
+        return sb.ToString();
     }
 }
 
