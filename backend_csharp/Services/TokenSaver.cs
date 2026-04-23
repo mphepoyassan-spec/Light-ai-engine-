@@ -1,11 +1,25 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Services;
 
-public class TokenSaver
+public partial class TokenSaver
 {
     private readonly int _maxContextMessages;
-    private readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
+    private static readonly string[] _fillerWords = { "um", "uh", "er", "ah", "like", "you know", "basically", "actually", "literally", "sort of", "kind of" };
+
+    [GeneratedRegex(@"\s+", RegexOptions.Compiled)]
+    private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex(@"([!?.,]){2,}", RegexOptions.Compiled)]
+    private static partial Regex PunctuationRegex();
+
+    [GeneratedRegex(@"^\W+", RegexOptions.Compiled)]
+    private static partial Regex LeadingNonWordRegex();
+
+    private static readonly Regex[] _fillerRegexes = _fillerWords
+        .Select(word => new Regex($@"\s*\b{word}\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled))
+        .ToArray();
 
     public TokenSaver(int maxContextMessages = 5)
     {
@@ -17,19 +31,19 @@ public class TokenSaver
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
         // Remove filler words
-        foreach (var word in _fillerWords)
+        foreach (var regex in _fillerRegexes)
         {
-            text = Regex.Replace(text, $@"\s*\b{word}\b\s*", " ", RegexOptions.IgnoreCase);
+            text = regex.Replace(text, " ");
         }
 
         // Normalize whitespace
-        text = Regex.Replace(text, @"\s+", " ").Trim();
+        text = WhitespaceRegex().Replace(text, " ").Trim();
 
         // Normalize redundant punctuation
-        text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
+        text = PunctuationRegex().Replace(text, "$1");
 
         // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        text = LeadingNonWordRegex().Replace(text, "");
 
         return text.Trim();
     }
@@ -45,15 +59,15 @@ public class TokenSaver
 
     public string OptimizePrompt(List<ChatMessage> messages)
     {
-        var prompt = "";
+        var sb = new StringBuilder();
         foreach (var msg in messages)
         {
             var content = CleanText(msg.Content);
             var role = msg.Role.ToLower() == "user" ? "User" : "AI";
-            prompt += $"{role}: {content}\n";
+            sb.Append(role).Append(": ").Append(content).Append('\n');
         }
-        prompt += "AI:";
-        return prompt;
+        sb.Append("AI:");
+        return sb.ToString();
     }
 }
 

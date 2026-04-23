@@ -9,7 +9,7 @@ public class TokenSaverTests
     public void CleanText_RemovesFillerWords()
     {
         var ts = new TokenSaver();
-        var result = ts.CleanText("Hello um world");
+        var result = ts.CleanText("Hello um world actually");
         Assert.Equal("Hello world", result);
     }
 
@@ -34,5 +34,17 @@ public class TokenSaverTests
         var result = ts.TrimContext(messages);
         Assert.Equal(2, result.Count);
         Assert.Equal("2", result[0].Content);
+    }
+
+    [Fact]
+    public void OptimizePrompt_UsesStringBuilder_And_CleansText()
+    {
+        var ts = new TokenSaver();
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage { Role = "user", Content = "Hello um like world" }
+        };
+        var result = ts.OptimizePrompt(messages);
+        Assert.Equal("User: Hello world\nAI:", result);
     }
 }
