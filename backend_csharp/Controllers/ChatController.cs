@@ -80,15 +80,25 @@ public class ChatController : ControllerBase
 
             foreach (var word in words)
             {
+                if (HttpContext.RequestAborted.IsCancellationRequested)
+                    break;
+
                 var chunk = new { chunk = word + " ", done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                await Task.Delay(50, HttpContext.RequestAborted);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                _memory.AddMessage(request.SessionId, "assistant", fullResponse);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected, stop processing
         }
         catch (Exception ex)
         {

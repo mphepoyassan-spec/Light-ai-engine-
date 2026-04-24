@@ -41,7 +41,16 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            var userMsg = "your request";
+            var lastUserIndex = text.LastIndexOf("User: ");
+            if (lastUserIndex != -1)
+            {
+                var remaining = text.Substring(lastUserIndex + 6);
+                var endOfLine = remaining.IndexOf('\n');
+                userMsg = endOfLine != -1 ? remaining.Substring(0, endOfLine) : remaining;
+            }
+
+            return $"I understand your request about \"{userMsg.Trim()}\". [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
