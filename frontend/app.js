@@ -77,24 +77,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(line.substring(6));
-                            if (data.done) break;
+                            if (data.done) continue;
                             fullText += data.chunk;
                             assistantBubble.textContent = fullText;
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         } catch (e) {
-                            console.error('Error parsing SSE chunk', e);
+                            console.error('Error parsing SSE chunk', e, line);
                         }
                     }
                 }
@@ -125,17 +127,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial check to see if backend is online
     const checkStatus = () => {
         fetch(`${API_URL}/`)
-            .then(res => res.json())
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error('Offline');
+            })
             .then(data => {
                 if (data.status === 'online') {
                     statusDot.className = 'online';
                     statusText.textContent = 'Local Engine Online';
+                } else {
+                    statusDot.className = '';
+                    statusText.textContent = 'Local Engine Status Unknown';
                 }
             })
             .catch(err => {
                 statusDot.className = '';
                 statusText.textContent = 'Local Engine Offline';
-                console.error('Backend is offline');
+                console.error('Backend is offline', err);
             });
     };
 
