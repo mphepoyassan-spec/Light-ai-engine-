@@ -41,11 +41,25 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            var userMsg = ExtractUserMessage(text);
+            return $"I understand your request about \"{userMsg}\".\nThis is a simulated response because the engine is in [Mock Mode].";
         }
 
         // Real inference logic would go here if we had the model signature
         // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
+    }
+
+    private string ExtractUserMessage(string prompt)
+    {
+        var lines = prompt.Split('\n');
+        foreach (var line in lines.Reverse())
+        {
+            if (line.StartsWith("User: "))
+            {
+                return line.Substring(6).Trim();
+            }
+        }
+        return prompt.Trim();
     }
 }
