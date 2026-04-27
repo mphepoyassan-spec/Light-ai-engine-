@@ -1,11 +1,21 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Services;
 
-public class TokenSaver
+public partial class TokenSaver
 {
     private readonly int _maxContextMessages;
-    private readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
+    private static readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
+
+    [GeneratedRegex(@"\s+", RegexOptions.Compiled)]
+    private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex(@"([!?.,]){2,}", RegexOptions.Compiled)]
+    private static partial Regex PunctuationRegex();
+
+    [GeneratedRegex(@"^\W+", RegexOptions.Compiled)]
+    private static partial Regex LeadingNonWordRegex();
 
     public TokenSaver(int maxContextMessages = 5)
     {
@@ -23,13 +33,13 @@ public class TokenSaver
         }
 
         // Normalize whitespace
-        text = Regex.Replace(text, @"\s+", " ").Trim();
+        text = WhitespaceRegex().Replace(text, " ").Trim();
 
         // Normalize redundant punctuation
-        text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
+        text = PunctuationRegex().Replace(text, "$1");
 
         // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        text = LeadingNonWordRegex().Replace(text, "");
 
         return text.Trim();
     }
@@ -45,15 +55,15 @@ public class TokenSaver
 
     public string OptimizePrompt(List<ChatMessage> messages)
     {
-        var prompt = "";
+        var sb = new StringBuilder();
         foreach (var msg in messages)
         {
             var content = CleanText(msg.Content);
-            var role = msg.Role.ToLower() == "user" ? "User" : "AI";
-            prompt += $"{role}: {content}\n";
+            var role = msg.Role.Equals("user", StringComparison.OrdinalIgnoreCase) ? "User" : "AI";
+            sb.Append(role).Append(": ").Append(content).Append('\n');
         }
-        prompt += "AI:";
-        return prompt;
+        sb.Append("AI:");
+        return sb.ToString();
     }
 }
 
