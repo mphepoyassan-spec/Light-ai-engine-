@@ -34,6 +34,9 @@ public class ChatController : ControllerBase
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                // Still record the message in history even if cached
+                _memory.AddMessage(request.SessionId, "user", request.Message);
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
 
@@ -80,15 +83,21 @@ public class ChatController : ControllerBase
 
             foreach (var word in words)
             {
+                if (HttpContext.RequestAborted.IsCancellationRequested)
+                    break;
+
                 var chunk = new { chunk = word + " ", done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                _memory.AddMessage(request.SessionId, "assistant", fullResponse);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
         }
         catch (Exception ex)
         {
