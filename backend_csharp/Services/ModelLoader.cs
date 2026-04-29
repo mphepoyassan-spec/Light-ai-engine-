@@ -41,7 +41,17 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            var userMsg = "your request";
+            var lines = text.Split('\n');
+            foreach (var line in lines.Reverse())
+            {
+                if (line.StartsWith("User: "))
+                {
+                    userMsg = line.Substring(6).Trim();
+                    break;
+                }
+            }
+            return $"I understand your request about \"{userMsg}\". [Mock Mode]\nThis is a multi-line mock response\nto test streaming and UI behavior.";
         }
 
         // Real inference logic would go here if we had the model signature
