@@ -37,15 +37,21 @@ public class ModelLoader
         }
     }
 
-    public string Predict(string text)
+    public string Predict(string prompt)
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message from the formatted prompt
+            var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var lastUserMessage = lines.LastOrDefault(l => l.StartsWith("User: "))?.Substring(6) ?? "your message";
+
+            return $"I have processed your request: \"{lastUserMessage}\".\n" +
+                   "Currently running in [Mock Mode] as the ONNX model is not available.\n" +
+                   "In a production environment, this would be the output of the local LLM.";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
-        return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
+        return $"Inference performed using model at {_settings.ModelPath}.\n" +
+               "This is a placeholder for the actual model output based on the provided prompt.";
     }
 }
