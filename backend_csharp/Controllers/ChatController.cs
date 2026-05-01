@@ -34,6 +34,11 @@ public class ChatController : ControllerBase
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                // Even on cache hit, we might want to update memory?
+                // Let's keep it simple and just return if cached.
+                // Actually, for better context, let's add to memory too.
+                _memory.AddMessage(request.SessionId, "user", request.Message);
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
 
@@ -69,6 +74,8 @@ public class ChatController : ControllerBase
             }
 
             Response.Headers.Append("Content-Type", "text/event-stream");
+            Response.Headers.Append("Cache-Control", "no-cache");
+            Response.Headers.Append("Connection", "keep-alive");
 
             _memory.AddMessage(request.SessionId, "user", request.Message);
             var history = _memory.GetHistory(request.SessionId);
@@ -80,15 +87,25 @@ public class ChatController : ControllerBase
 
             foreach (var word in words)
             {
+                if (HttpContext.RequestAborted.IsCancellationRequested)
+                    break;
+
                 var chunk = new { chunk = word + " ", done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                await Task.Delay(50, HttpContext.RequestAborted);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                _memory.AddMessage(request.SessionId, "assistant", fullResponse);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected
         }
         catch (Exception ex)
         {

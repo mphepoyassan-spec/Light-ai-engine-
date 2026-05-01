@@ -41,11 +41,17 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message from the prompt for a more dynamic mock response
+            var lines = text.Trim().Split('\n');
+            var lastUserLine = lines.LastOrDefault(l => l.StartsWith("User: ", StringComparison.OrdinalIgnoreCase));
+            var userContent = lastUserLine?.Substring(6).Trim() ?? "your request";
+
+            return $"I understand you're asking about \"{userContent}\".\n" +
+                   $"Currently, I'm running in [Mock Mode] because the model file was not found or failed to load.\n" +
+                   $"In a production environment, I would process this using the ONNX model at {_settings.ModelPath}.";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
