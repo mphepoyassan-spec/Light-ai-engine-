@@ -15,8 +15,9 @@ public class ModelLoaderTests
         var loader = new ModelLoader(options);
 
         loader.Load();
-        var result = loader.Predict("hello");
+        var result = loader.Predict("User: hello\nAI:");
 
-        Assert.Contains("[Mock Mode]", result);
+        Assert.Contains("Mock Mode", result);
+        Assert.Contains("hello", result);
     }
 }

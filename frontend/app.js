@@ -9,10 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
 
-    // Use relative paths if served from the same origin, otherwise fallback to localhost
-    const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-                    ? window.location.origin
-                    : 'http://localhost:8000';
+    // More robust API_URL resolution
+    let API_URL = window.location.origin;
+    if (API_URL.includes('file://') || API_URL === 'null') {
+        API_URL = 'http://localhost:8000';
+    }
 
     const addMessage = (content, role) => {
         const messageDiv = document.createElement('div');
@@ -77,13 +78,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+
+                // Keep the last partial line in the buffer
+                buffer = lines.pop();
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {

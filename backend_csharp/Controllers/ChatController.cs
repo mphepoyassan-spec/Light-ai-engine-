@@ -31,13 +31,16 @@ public class ChatController : ControllerBase
                 return BadRequest(new { error = true, message = "Message cannot be empty", code = 400 });
             }
 
+            // Always add user message to memory first
+            _memory.AddMessage(request.SessionId, "user", request.Message);
+
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                // If cached, still add assistant response to memory
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
-
-            _memory.AddMessage(request.SessionId, "user", request.Message);
 
             var history = _memory.GetHistory(request.SessionId);
             var trimmed = _tokenSaver.TrimContext(history);
@@ -80,6 +83,9 @@ public class ChatController : ControllerBase
 
             foreach (var word in words)
             {
+                if (HttpContext.RequestAborted.IsCancellationRequested)
+                    return;
+
                 var chunk = new { chunk = word + " ", done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
@@ -87,8 +93,12 @@ public class ChatController : ControllerBase
             }
 
             _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
         }
         catch (Exception ex)
         {
