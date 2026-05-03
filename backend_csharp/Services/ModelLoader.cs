@@ -41,7 +41,11 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            var lastUserMessage = text.Split('\n')
+                .LastOrDefault(l => l.StartsWith("User: "))
+                ?.Replace("User: ", "") ?? "your request";
+
+            return $"I understand you are asking about: \"{lastUserMessage.Trim()}\". This is a mock response because the ONNX model is not loaded or inference logic is pending.";
         }
 
         // Real inference logic would go here if we had the model signature
