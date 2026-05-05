@@ -41,11 +41,24 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the user's last message from the prompt if in mock mode
+            var userMessage = "your request";
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines.Reverse())
+            {
+                if (line.StartsWith("User: "))
+                {
+                    userMessage = line.Substring(6).Trim();
+                    break;
+                }
+            }
+
+            return $"I understand your request about \"{userMessage}\". [Mock Mode]\n" +
+                   "This is a simulated response because no ONNX model was found or loaded.\n" +
+                   "To use real AI, place a compatible model.onnx file in the configured path.";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
