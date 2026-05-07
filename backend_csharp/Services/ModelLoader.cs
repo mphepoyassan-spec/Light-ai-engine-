@@ -37,11 +37,17 @@ public class ModelLoader
         }
     }
 
-    public string Predict(string text)
+    public string Predict(string prompt)
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the user's message from the prompt for a better mock response
+            // The prompt format is "User: ...\nAI: ...\nUser: <message>\nAI:"
+            var lines = prompt.Split('\n');
+            var lastUserLine = lines.LastOrDefault(l => l.StartsWith("User: "));
+            var userMessage = lastUserLine?.Substring(6) ?? "your request";
+
+            return $"I understand you're asking about '{userMessage}'. [Mock Mode]\nTo enable real inference, place a valid ONNX model at: {_settings.ModelPath}";
         }
 
         // Real inference logic would go here if we had the model signature
