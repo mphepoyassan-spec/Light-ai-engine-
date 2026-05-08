@@ -109,6 +109,7 @@ header {
     line-height: 1.4;
     font-size: 0.95rem;
     position: relative;
+    white-space: pre-wrap;
 }
 
 .message.user .bubble {
