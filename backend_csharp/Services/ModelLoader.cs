@@ -37,15 +37,28 @@ public class ModelLoader
         }
     }
 
-    public string Predict(string text)
+    public string Predict(string prompt)
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message from the prompt
+            var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var userMessage = "";
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                if (lines[i].StartsWith("User: "))
+                {
+                    userMessage = lines[i].Substring(6);
+                    break;
+                }
+            }
+
+            return $"I understand your request about: \"{userMessage}\".\n\n" +
+                   $"Note: The system is currently in [Mock Mode] because the model file at '{_settings.ModelPath}' was not found or failed to load.\n" +
+                   "Please ensure the ONNX model is correctly placed to enable real inference.";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
