@@ -37,15 +37,19 @@ public class ModelLoader
         }
     }
 
-    public string Predict(string text)
+    public string Predict(string prompt)
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Try to extract the last user message from the prompt
+            var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var lastUserLine = lines.LastOrDefault(l => l.StartsWith("User: "));
+            var userMessage = lastUserLine != null ? lastUserLine.Substring(6) : "your request";
+
+            return $"I understand you said: \"{userMessage}\"\n\nThis is a simulated response because the local AI model is currently in [Mock Mode].\n\nTo enable real inference, please ensure a valid ONNX model is placed at: {_settings.ModelPath}";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
