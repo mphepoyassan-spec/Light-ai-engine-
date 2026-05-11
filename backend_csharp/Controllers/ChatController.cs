@@ -59,12 +59,13 @@ public class ChatController : ControllerBase
     [HttpPost("stream")]
     public async Task Stream([FromBody] ChatRequest request)
     {
+        var cancellationToken = HttpContext.RequestAborted;
         try
         {
             if (string.IsNullOrWhiteSpace(request.Message))
             {
                 Response.StatusCode = 400;
-                await Response.WriteAsJsonAsync(new { error = true, message = "Message cannot be empty", code = 400 });
+                await Response.WriteAsJsonAsync(new { error = true, message = "Message cannot be empty", code = 400 }, cancellationToken);
                 return;
             }
 
@@ -80,22 +81,27 @@ public class ChatController : ControllerBase
 
             foreach (var word in words)
             {
+                if (cancellationToken.IsCancellationRequested) break;
+
                 var chunk = new { chunk = word + " ", done = false };
-                await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
-                await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+                await Task.Delay(50, cancellationToken);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _memory.AddMessage(request.SessionId, "assistant", fullResponse);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
         }
         catch (Exception ex)
         {
-            if (!Response.HasStarted)
+            if (!Response.HasStarted && !cancellationToken.IsCancellationRequested)
             {
                 Response.StatusCode = 500;
-                await Response.WriteAsJsonAsync(new { error = true, message = ex.Message, code = 500 });
+                await Response.WriteAsJsonAsync(new { error = true, message = ex.Message, code = 500 }, cancellationToken);
             }
         }
     }
