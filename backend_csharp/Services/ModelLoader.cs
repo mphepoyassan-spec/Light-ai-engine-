@@ -41,7 +41,8 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            var prefix = text.Length > 20 ? text.Substring(0, 20) + "..." : text;
+            return $"I've analyzed your request starting with: '{prefix}'\nThis is a simulated response because the engine is running in [Mock Mode].";
         }
 
         // Real inference logic would go here if we had the model signature
