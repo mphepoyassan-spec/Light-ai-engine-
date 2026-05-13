@@ -15,8 +15,9 @@ public class ModelLoaderTests
         var loader = new ModelLoader(options);
 
         loader.Load();
-        var result = loader.Predict("hello");
+        var result = loader.Predict("hello world test");
 
         Assert.Contains("[Mock Mode]", result);
+        Assert.Contains("hello world test", result);
     }
 }
