@@ -41,11 +41,9 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            return $"I have received your message:\n\"{text}\"\n\nI am currently operating in [Mock Mode] because the ONNX model is not loaded.";
         }
 
-        // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
-        return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
+        return $"Inference performed using model at {_settings.ModelPath}.\n\n(Inference logic pending model signature)\n\nPrompt received: {text.Length} characters.";
     }
 }
