@@ -41,7 +41,7 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            return $"I understand your request. [Mock Mode]\nYou said: {text}\nI am currently running without a loaded ONNX model.";
         }
 
         // Real inference logic would go here if we had the model signature
