@@ -41,7 +41,10 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            return $@"I understand your request. [Mock Mode]
+Your prompt was: {text}
+I'm currently running in mock mode because the ONNX model was not found or failed to load.
+Please check the model path in appsettings.json.";
         }
 
         // Real inference logic would go here if we had the model signature
