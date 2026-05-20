@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
 
-    // Use relative paths if served from the same origin, otherwise fallback to localhost
-    const API_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+    // Use current origin if served via HTTP/S, otherwise fallback to localhost:8000
+    const API_URL = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
                     ? window.location.origin
                     : 'http://localhost:8000';
 
@@ -77,18 +77,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep partial line in buffer
 
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('data: ')) {
                         try {
-                            const data = JSON.parse(line.substring(6));
+                            const data = JSON.parse(trimmedLine.substring(6));
                             if (data.done) break;
                             fullText += data.chunk;
                             assistantBubble.textContent = fullText;
