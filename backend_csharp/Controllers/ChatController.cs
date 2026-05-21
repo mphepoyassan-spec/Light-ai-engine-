@@ -31,13 +31,16 @@ public class ChatController : ControllerBase
                 return BadRequest(new { error = true, message = "Message cannot be empty", code = 400 });
             }
 
+            // Always add user message to memory first
+            _memory.AddMessage(request.SessionId, "user", request.Message);
+
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                // Also add cached assistant response to memory to keep context
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
-
-            _memory.AddMessage(request.SessionId, "user", request.Message);
 
             var history = _memory.GetHistory(request.SessionId);
             var trimmed = _tokenSaver.TrimContext(history);
@@ -71,15 +74,29 @@ public class ChatController : ControllerBase
             Response.Headers.Append("Content-Type", "text/event-stream");
 
             _memory.AddMessage(request.SessionId, "user", request.Message);
-            var history = _memory.GetHistory(request.SessionId);
-            var trimmed = _tokenSaver.TrimContext(history);
-            var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
-            var fullResponse = _modelLoader.Predict(prompt);
+            var cached = _cache.Get(request.Message);
+            string fullResponse;
+
+            if (cached != null)
+            {
+                fullResponse = cached;
+            }
+            else
+            {
+                var history = _memory.GetHistory(request.SessionId);
+                var trimmed = _tokenSaver.TrimContext(history);
+                var prompt = _tokenSaver.OptimizePrompt(trimmed);
+                fullResponse = _modelLoader.Predict(prompt);
+                _cache.Set(request.Message, fullResponse);
+            }
+
             var words = fullResponse.Split(' ');
 
             foreach (var word in words)
             {
+                if (HttpContext.RequestAborted.IsCancellationRequested) break;
+
                 var chunk = new { chunk = word + " ", done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
@@ -87,8 +104,12 @@ public class ChatController : ControllerBase
             }
 
             _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
         }
         catch (Exception ex)
         {
