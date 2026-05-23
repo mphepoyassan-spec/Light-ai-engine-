@@ -34,6 +34,8 @@ public class ChatController : ControllerBase
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                _memory.AddMessage(request.SessionId, "user", request.Message);
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
 
@@ -68,7 +70,7 @@ public class ChatController : ControllerBase
                 return;
             }
 
-            Response.Headers.Append("Content-Type", "text/event-stream");
+            Response.Headers["Content-Type"] = "text/event-stream";
 
             _memory.AddMessage(request.SessionId, "user", request.Message);
             var history = _memory.GetHistory(request.SessionId);
