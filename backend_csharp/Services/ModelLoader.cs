@@ -41,11 +41,11 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            return $"I understand your request regarding: {text}\n\n[Mock Mode: Model inference is currently simulated.]";
         }
 
         // Real inference logic would go here if we had the model signature
         // For now, even if session is loaded, we return a mock-like response with a note
-        return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
+        return $"Inference performed using model at {_settings.ModelPath} for input: {text}. (Inference logic pending model signature)";
     }
 }
