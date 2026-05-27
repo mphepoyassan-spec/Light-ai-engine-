@@ -22,6 +22,27 @@ public class TokenSaverTests
     }
 
     [Fact]
+    public void CleanText_HandlesLeadingNonWord()
+    {
+        var ts = new TokenSaver();
+        var result = ts.CleanText("...Hello world");
+        Assert.Equal("Hello world", result);
+    }
+
+    [Fact]
+    public void OptimizePrompt_UsesStringBuilder_AndCorrectRoles()
+    {
+        var ts = new TokenSaver();
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage { Role = "user", Content = "Hi um" },
+            new ChatMessage { Role = "assistant", Content = "Hello basically" }
+        };
+        var result = ts.OptimizePrompt(messages);
+        Assert.Equal("User: Hi\nAI: Hello\nAI:", result);
+    }
+
+    [Fact]
     public void TrimContext_Works()
     {
         var ts = new TokenSaver(2);
