@@ -8,12 +8,16 @@ public class ConversationMemory
 
     public List<ChatMessage> GetHistory(string sessionId)
     {
-        return _conversations.GetOrAdd(sessionId, _ => new List<ChatMessage>());
+        var history = _conversations.GetOrAdd(sessionId, _ => new List<ChatMessage>());
+        lock (history)
+        {
+            return history.ToList();
+        }
     }
 
     public void AddMessage(string sessionId, string role, string content)
     {
-        var history = GetHistory(sessionId);
+        var history = _conversations.GetOrAdd(sessionId, _ => new List<ChatMessage>());
         lock (history)
         {
             history.Add(new ChatMessage { Role = role, Content = content });

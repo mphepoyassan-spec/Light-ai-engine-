@@ -34,6 +34,8 @@ public class ChatController : ControllerBase
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                _memory.AddMessage(request.SessionId, "user", request.Message);
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
 
@@ -70,6 +72,8 @@ public class ChatController : ControllerBase
 
             Response.Headers.Append("Content-Type", "text/event-stream");
 
+            var cts = HttpContext.RequestAborted;
+
             _memory.AddMessage(request.SessionId, "user", request.Message);
             var history = _memory.GetHistory(request.SessionId);
             var trimmed = _tokenSaver.TrimContext(history);
@@ -80,10 +84,12 @@ public class ChatController : ControllerBase
 
             foreach (var word in words)
             {
+                if (cts.IsCancellationRequested) break;
+
                 var chunk = new { chunk = word + " ", done = false };
-                await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
-                await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n", cts);
+                await Response.Body.FlushAsync(cts);
+                await Task.Delay(50, cts);
             }
 
             _memory.AddMessage(request.SessionId, "assistant", fullResponse);
