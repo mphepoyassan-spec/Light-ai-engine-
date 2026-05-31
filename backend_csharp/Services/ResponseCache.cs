@@ -7,6 +7,7 @@ public class ResponseCache
     private readonly int _maxSize;
     private readonly TimeSpan _ttl;
     private readonly ConcurrentDictionary<string, (string Value, DateTime Timestamp)> _cache = new();
+    private readonly ConcurrentQueue<string> _keys = new();
 
     public ResponseCache(int maxSize = 100, int ttlSeconds = 300)
     {
@@ -29,14 +30,23 @@ public class ResponseCache
 
     public void Set(string key, string value)
     {
+        bool isUpdate = _cache.ContainsKey(key);
         _cache[key] = (value, DateTime.UtcNow);
 
-        if (_cache.Count > _maxSize)
+        if (!isUpdate)
         {
-            var oldest = _cache.OrderBy(kvp => kvp.Value.Timestamp).FirstOrDefault();
-            if (oldest.Key != null)
+            _keys.Enqueue(key);
+        }
+
+        while (_cache.Count > _maxSize)
+        {
+            if (_keys.TryDequeue(out var oldestKey))
             {
-                _cache.TryRemove(oldest.Key, out _);
+                _cache.TryRemove(oldestKey, out _);
+            }
+            else
+            {
+                break;
             }
         }
     }
@@ -44,5 +54,6 @@ public class ResponseCache
     public void Clear()
     {
         _cache.Clear();
+        while (_keys.TryDequeue(out _)) { }
     }
 }
