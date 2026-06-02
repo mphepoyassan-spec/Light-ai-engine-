@@ -41,7 +41,7 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            return $"I understand your request: \"{text}\". [Mock Mode]\n\nThis is a simulated response because the actual ONNX model was not loaded.";
         }
 
         // Real inference logic would go here if we had the model signature
