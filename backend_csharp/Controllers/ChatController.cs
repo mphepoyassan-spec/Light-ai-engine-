@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using LightAI.Backend.Services;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Controllers;
 
@@ -31,13 +32,14 @@ public class ChatController : ControllerBase
                 return BadRequest(new { error = true, message = "Message cannot be empty", code = 400 });
             }
 
+            _memory.AddMessage(request.SessionId, "user", request.Message);
+
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
-
-            _memory.AddMessage(request.SessionId, "user", request.Message);
 
             var history = _memory.GetHistory(request.SessionId);
             var trimmed = _tokenSaver.TrimContext(history);
@@ -76,19 +78,27 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
 
-            foreach (var word in words)
+            // Better chunking that preserves spaces and handles newlines
+            var chunks = Regex.Split(fullResponse, @"(?<=\s)|(?=\n)");
+
+            foreach (var chunkText in chunks)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                if (HttpContext.RequestAborted.IsCancellationRequested)
+                    break;
+
+                var chunk = new { chunk = chunkText, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                _memory.AddMessage(request.SessionId, "assistant", fullResponse);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
         }
         catch (Exception ex)
         {
