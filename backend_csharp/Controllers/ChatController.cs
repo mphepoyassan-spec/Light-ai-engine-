@@ -31,13 +31,13 @@ public class ChatController : ControllerBase
                 return BadRequest(new { error = true, message = "Message cannot be empty", code = 400 });
             }
 
+            _memory.AddMessage(request.SessionId, "user", request.Message);
+
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
                 return Ok(new { response = cached, cached = true });
             }
-
-            _memory.AddMessage(request.SessionId, "user", request.Message);
 
             var history = _memory.GetHistory(request.SessionId);
             var trimmed = _tokenSaver.TrimContext(history);
@@ -71,16 +71,29 @@ public class ChatController : ControllerBase
             Response.Headers.Append("Content-Type", "text/event-stream");
 
             _memory.AddMessage(request.SessionId, "user", request.Message);
-            var history = _memory.GetHistory(request.SessionId);
-            var trimmed = _tokenSaver.TrimContext(history);
-            var prompt = _tokenSaver.OptimizePrompt(trimmed);
+            var cached = _cache.Get(request.Message);
+            string fullResponse;
 
-            var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
-
-            foreach (var word in words)
+            if (cached != null)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                fullResponse = cached;
+            }
+            else
+            {
+                var history = _memory.GetHistory(request.SessionId);
+                var trimmed = _tokenSaver.TrimContext(history);
+                var prompt = _tokenSaver.OptimizePrompt(trimmed);
+
+                fullResponse = _modelLoader.Predict(prompt);
+                _cache.Set(request.Message, fullResponse);
+            }
+
+            var chunks = System.Text.RegularExpressions.Regex.Split(fullResponse, @"(\s+)");
+
+            foreach (var chunkText in chunks)
+            {
+                if (string.IsNullOrEmpty(chunkText)) continue;
+                var chunk = new { chunk = chunkText, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
