@@ -76,19 +76,26 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
+            // Split by whitespace but keep the whitespace in the tokens
+            var tokens = System.Text.RegularExpressions.Regex.Split(fullResponse, @"(\s+)");
 
-            foreach (var word in words)
+            foreach (var token in tokens)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                if (string.IsNullOrEmpty(token)) continue;
+                if (HttpContext.RequestAborted.IsCancellationRequested) break;
+
+                var chunk = new { chunk = token, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
             }
 
             _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
+                await Response.Body.FlushAsync();
+            }
         }
         catch (Exception ex)
         {
