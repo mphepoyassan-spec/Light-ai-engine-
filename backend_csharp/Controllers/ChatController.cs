@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using LightAI.Backend.Services;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Controllers;
 
@@ -34,6 +35,8 @@ public class ChatController : ControllerBase
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                _memory.AddMessage(request.SessionId, "user", request.Message);
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
 
@@ -64,7 +67,7 @@ public class ChatController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.Message))
             {
                 Response.StatusCode = 400;
-                await Response.WriteAsJsonAsync(new { error = true, message = "Message cannot be empty", code = 400 });
+                await Response.WriteAsJsonAsync(new { error = true, message = "Message cannot be empty", code = 400 }, HttpContext.RequestAborted);
                 return;
             }
 
@@ -76,19 +79,31 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
 
-            foreach (var word in words)
+            // Split while preserving whitespace
+            var chunks = Regex.Split(fullResponse, @"(\s+)");
+
+            foreach (var chunk in chunks)
             {
-                var chunk = new { chunk = word + " ", done = false };
-                await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
-                await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                if (string.IsNullOrEmpty(chunk)) continue;
+                if (HttpContext.RequestAborted.IsCancellationRequested) break;
+
+                var data = new { chunk = chunk, done = false };
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(data)}\n\n", HttpContext.RequestAborted);
+                await Response.Body.FlushAsync(HttpContext.RequestAborted);
+                await Task.Delay(50, HttpContext.RequestAborted);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
-            await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
-            await Response.Body.FlushAsync();
+            if (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                _memory.AddMessage(request.SessionId, "assistant", fullResponse);
+                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n", HttpContext.RequestAborted);
+                await Response.Body.FlushAsync(HttpContext.RequestAborted);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected, nothing to do
         }
         catch (Exception ex)
         {
