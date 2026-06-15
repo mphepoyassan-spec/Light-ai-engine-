@@ -37,15 +37,19 @@ public class ModelLoader
         }
     }
 
-    public string Predict(string text)
+    public string Predict(string prompt)
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message from the prompt for a better mock response
+            var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var lastUserLine = lines.LastOrDefault(l => l.StartsWith("User: "));
+            var userMessage = lastUserLine?.Substring(6) ?? "your request";
+
+            return $"I understand you're asking about '{userMessage}'. [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
-        return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
+        return $"Inference performed for prompt: {prompt.Substring(0, Math.Min(20, prompt.Length))}... (Inference logic pending model signature)";
     }
 }
