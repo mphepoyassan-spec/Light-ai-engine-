@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using LightAI.Backend.Services;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Controllers;
 
@@ -76,14 +77,15 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
+            var tokens = Regex.Split(fullResponse, @"(\s+)");
 
-            foreach (var word in words)
+            foreach (var token in tokens)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                if (string.IsNullOrEmpty(token)) continue;
+                var chunk = new { chunk = token, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                await Task.Delay(20);
             }
 
             _memory.AddMessage(request.SessionId, "assistant", fullResponse);
