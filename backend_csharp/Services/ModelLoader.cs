@@ -41,11 +41,27 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            var lastUserMessage = ExtractLastUserMessage(text);
+            return $"I understand your request about \"{lastUserMessage}\". [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
         // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
+    }
+
+    private string ExtractLastUserMessage(string prompt)
+    {
+        if (string.IsNullOrEmpty(prompt)) return "nothing";
+
+        var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        for (int i = lines.Length - 1; i >= 0; i--)
+        {
+            if (lines[i].StartsWith("User:", StringComparison.OrdinalIgnoreCase))
+            {
+                return lines[i].Substring(5).Trim();
+            }
+        }
+        return "your query";
     }
 }
