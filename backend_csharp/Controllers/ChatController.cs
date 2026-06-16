@@ -31,13 +31,13 @@ public class ChatController : ControllerBase
                 return BadRequest(new { error = true, message = "Message cannot be empty", code = 400 });
             }
 
+            _memory.AddMessage(request.SessionId, "user", request.Message);
+
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
                 return Ok(new { response = cached, cached = true });
             }
-
-            _memory.AddMessage(request.SessionId, "user", request.Message);
 
             var history = _memory.GetHistory(request.SessionId);
             var trimmed = _tokenSaver.TrimContext(history);
@@ -76,14 +76,17 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
+            var words = System.Text.RegularExpressions.Regex.Split(fullResponse, @"(\s+)");
 
             foreach (var word in words)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                if (HttpContext.RequestAborted.IsCancellationRequested) break;
+                if (string.IsNullOrEmpty(word)) continue;
+
+                var chunk = new { chunk = word, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
-                await Task.Delay(50);
+                await Task.Delay(50, HttpContext.RequestAborted);
             }
 
             _memory.AddMessage(request.SessionId, "assistant", fullResponse);
