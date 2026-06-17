@@ -19,4 +19,18 @@ public class ModelLoaderTests
 
         Assert.Contains("[Mock Mode]", result);
     }
+
+    [Fact]
+    public void Predict_ReturnsContextAwareMockMessage()
+    {
+        var settings = new ModelSettings { ModelPath = "non_existent.onnx" };
+        var options = Options.Create(settings);
+        var loader = new ModelLoader(options);
+
+        loader.Load();
+        var result = loader.Predict("User: What is the weather?\nAI: I don't know.\nUser: Tell me a joke.\nAI:");
+
+        Assert.Contains("Tell me a joke", result);
+        Assert.Contains("[Mock Mode]", result);
+    }
 }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Microsoft.ML.OnnxRuntime;
+using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Services;
 
@@ -41,11 +42,18 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
+            // Simple logic to make mock mode more context-aware
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var lastUserMessage = lines.LastOrDefault(l => l.StartsWith("User:"))?.Replace("User:", "").Trim();
+
+            if (!string.IsNullOrEmpty(lastUserMessage))
+            {
+                return $"I understand you are asking about '{lastUserMessage}'. [Mock Mode]";
+            }
             return "I understand your request. [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
