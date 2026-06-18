@@ -27,12 +27,25 @@ public class TokenSaverTests
         var ts = new TokenSaver(2);
         var messages = new List<ChatMessage>
         {
-            new ChatMessage { Content = "1" },
-            new ChatMessage { Content = "2" },
-            new ChatMessage { Content = "3" }
+            new ChatMessage { Role = "user", Content = "1" },
+            new ChatMessage { Role = "user", Content = "2" },
+            new ChatMessage { Role = "user", Content = "3" }
         };
         var result = ts.TrimContext(messages);
         Assert.Equal(2, result.Count);
         Assert.Equal("2", result[0].Content);
+    }
+
+    [Fact]
+    public void OptimizePrompt_UsesStringBuilder_And_CorrectRoles()
+    {
+        var ts = new TokenSaver();
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage { Role = "user", Content = "hello" },
+            new ChatMessage { Role = "assistant", Content = "hi" }
+        };
+        var result = ts.OptimizePrompt(messages);
+        Assert.Equal("User: hello\nAI: hi\nAI:", result);
     }
 }

@@ -69,36 +69,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.message || 'Server error');
             }
 
-            hideTyping();
-
             // Create a bubble for the assistant response
             const assistantBubble = addMessage('', 'assistant');
             let fullText = '';
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep partial line in buffer
 
                 for (const line of lines) {
+                    if (line.trim() === '') continue;
                     if (line.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(line.substring(6));
-                            if (data.done) break;
+                            if (data.done) continue;
                             fullText += data.chunk;
                             assistantBubble.textContent = fullText;
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         } catch (e) {
-                            console.error('Error parsing SSE chunk', e);
+                            console.error('Error parsing SSE chunk', e, line);
                         }
                     }
                 }
             }
+            hideTyping();
         } catch (error) {
             hideTyping();
             addMessage(`Error: ${error.message}. Make sure the backend is running.`, 'assistant');
