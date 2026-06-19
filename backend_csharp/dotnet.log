@@ -1,6 +1,6 @@
 Using launch settings from /app/backend_csharp/Properties/launchSettings.json...
 Building...
-/app/backend_csharp/Controllers/ChatController.cs(50,9): warning ASP0019: Use IHeaderDictionary.Append or the indexer to append or set headers. IDictionary.Add will throw an ArgumentException when attempting to add a duplicate key. (https://aka.ms/aspnet/analyzers) [/app/backend_csharp/backend_csharp.csproj]
+Model file not found at models/lightai_v1.onnx. Falling back to mock mode.
 info: Microsoft.Hosting.Lifetime[14]
       Now listening on: http://0.0.0.0:8000
 info: Microsoft.Hosting.Lifetime[0]
@@ -9,5 +9,3 @@ info: Microsoft.Hosting.Lifetime[0]
       Hosting environment: Development
 info: Microsoft.Hosting.Lifetime[0]
       Content root path: /app/backend_csharp
-info: Microsoft.Hosting.Lifetime[0]
-      Application is shutting down...
