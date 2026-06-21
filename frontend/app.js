@@ -69,21 +69,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.message || 'Server error');
             }
 
-            hideTyping();
-
             // Create a bubble for the assistant response
             const assistantBubble = addMessage('', 'assistant');
             let fullText = '';
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                // Hide typing indicator on first data chunk
+                hideTyping();
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+
+                // Keep the last partial line in the buffer
+                buffer = lines.pop();
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
@@ -99,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
+
+            // Final cleanup of typing indicator if not already hidden
+            hideTyping();
+
         } catch (error) {
             hideTyping();
             addMessage(`Error: ${error.message}. Make sure the backend is running.`, 'assistant');
