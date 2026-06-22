@@ -41,9 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const message = userInput.value.trim();
+        const message = userInput.value; // Don't trim to preserve intentional formatting if needed, though CleanText will trim later
 
-        if (!message) return;
+        if (!message.trim()) return;
 
         // Add user message to UI
         addMessage(message, 'user');
@@ -78,26 +78,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
 
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.substring(6));
-                            if (data.done) break;
-                            fullText += data.chunk;
-                            assistantBubble.textContent = fullText;
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                        } catch (e) {
-                            console.error('Error parsing SSE chunk', e);
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                if (data.done) break;
+                                fullText += data.chunk;
+                                assistantBubble.textContent = fullText;
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            } catch (e) {
+                                console.error('Error parsing SSE chunk', e);
+                            }
                         }
                     }
                 }
+            } finally {
+                reader.releaseLock();
+                hideTyping();
             }
         } catch (error) {
             hideTyping();
