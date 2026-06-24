@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Services;
 
-public class TokenSaver
+public partial class TokenSaver
 {
     private readonly int _maxContextMessages;
     private readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
@@ -17,22 +17,31 @@ public class TokenSaver
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
         // Remove filler words
-        foreach (var word in _fillerWords)
-        {
-            text = Regex.Replace(text, $@"\s*\b{word}\b\s*", " ", RegexOptions.IgnoreCase);
-        }
+        text = FillerRegex().Replace(text, " ");
 
         // Normalize whitespace
-        text = Regex.Replace(text, @"\s+", " ").Trim();
+        text = WhitespaceRegex().Replace(text, " ").Trim();
 
         // Normalize redundant punctuation
-        text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
+        text = PunctuationRegex().Replace(text, "$1");
 
         // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        text = LeadingNonWordRegex().Replace(text, "");
 
         return text.Trim();
     }
+
+    [GeneratedRegex(@"\s*\b(uh|um|er|ah|like|you know|basically|actually)\b\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex FillerRegex();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex(@"([!?.,]){2,}")]
+    private static partial Regex PunctuationRegex();
+
+    [GeneratedRegex(@"^\W+")]
+    private static partial Regex LeadingNonWordRegex();
 
     public List<T> TrimContext<T>(List<T> messages)
     {
