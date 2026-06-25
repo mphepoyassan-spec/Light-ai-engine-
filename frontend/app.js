@@ -77,13 +77,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep the last incomplete line in the buffer
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
@@ -103,6 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hideTyping();
             addMessage(`Error: ${error.message}. Make sure the backend is running.`, 'assistant');
             console.error('Error:', error);
+        } finally {
+            hideTyping();
         }
     });
 
