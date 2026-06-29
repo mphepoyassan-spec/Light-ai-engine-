@@ -41,7 +41,12 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message from the prompt for a context-aware mock response
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var lastUserLine = lines.LastOrDefault(l => l.StartsWith("User: "));
+            var lastMessage = lastUserLine?.Substring(6) ?? "your request";
+
+            return $"I understand {lastMessage}. [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
