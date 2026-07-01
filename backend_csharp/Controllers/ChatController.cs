@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using LightAI.Backend.Services;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Controllers;
 
@@ -34,6 +35,8 @@ public class ChatController : ControllerBase
             var cached = _cache.Get(request.Message);
             if (cached != null)
             {
+                _memory.AddMessage(request.SessionId, "user", request.Message);
+                _memory.AddMessage(request.SessionId, "assistant", cached);
                 return Ok(new { response = cached, cached = true });
             }
 
@@ -76,17 +79,20 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
+            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
 
-            foreach (var word in words)
+            // Use regex to split by whitespace but keep the whitespace
+            var tokens = Regex.Split(fullResponse, @"(?<=\s)");
+
+            foreach (var token in tokens)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                if (string.IsNullOrEmpty(token)) continue;
+                var chunk = new { chunk = token, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
             }
 
-            _memory.AddMessage(request.SessionId, "assistant", fullResponse);
             await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { chunk = "", done = true })}\n\n");
             await Response.Body.FlushAsync();
         }
@@ -106,6 +112,7 @@ public class ChatController : ControllerBase
         try
         {
             _memory.ClearHistory(request.SessionId);
+            _cache.Clear();
             return Ok(new { message = "History cleared", session_id = request.SessionId });
         }
         catch (Exception ex)
