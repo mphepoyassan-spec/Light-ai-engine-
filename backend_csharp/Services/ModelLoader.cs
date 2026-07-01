@@ -41,11 +41,21 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message from the prompt for a better mock response
+            var lastUserMessage = "your request";
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines.Reverse())
+            {
+                if (line.StartsWith("User: "))
+                {
+                    lastUserMessage = line.Substring(6);
+                    break;
+                }
+            }
+            return $"I understand {lastUserMessage}. [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature
-        // For now, even if session is loaded, we return a mock-like response with a note
         return $"Inference performed using model at {_settings.ModelPath}. (Inference logic pending model signature)";
     }
 }
