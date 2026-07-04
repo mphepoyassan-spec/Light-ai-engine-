@@ -19,4 +19,18 @@ public class ModelLoaderTests
 
         Assert.Contains("[Mock Mode]", result);
     }
+
+    [Fact]
+    public void Predict_ExtractsUserMessage_WhenInMockMode()
+    {
+        var settings = new ModelSettings { ModelPath = "non_existent.onnx" };
+        var options = Options.Create(settings);
+        var loader = new ModelLoader(options);
+
+        loader.Load();
+        var result = loader.Predict("User: What is AI?\nAI:");
+
+        Assert.Contains("What is AI?", result);
+        Assert.Contains("[Mock Mode]", result);
+    }
 }
