@@ -2,10 +2,16 @@ using System.Text.RegularExpressions;
 
 namespace LightAI.Backend.Services;
 
-public class TokenSaver
+public partial class TokenSaver
 {
     private readonly int _maxContextMessages;
     private readonly string[] _fillerWords = { "uh", "um", "er", "ah", "like", "you know", "basically", "actually" };
+
+    [GeneratedRegex(@"\s+", RegexOptions.Compiled)]
+    private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex(@"([!?.,]){2,}", RegexOptions.Compiled)]
+    private static partial Regex RedundantPunctuationRegex();
 
     public TokenSaver(int maxContextMessages = 5)
     {
@@ -23,13 +29,12 @@ public class TokenSaver
         }
 
         // Normalize whitespace
-        text = Regex.Replace(text, @"\s+", " ").Trim();
+        text = WhitespaceRegex().Replace(text, " ").Trim();
 
         // Normalize redundant punctuation
-        text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
+        text = RedundantPunctuationRegex().Replace(text, "$1");
 
-        // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        // We don't remove leading non-word characters anymore as they might be intentional (e.g. /help)
 
         return text.Trim();
     }

@@ -41,6 +41,22 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
+            // Try to extract the last user message from the prompt for a better mock response
+            var lastUserMessage = "";
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                if (lines[i].StartsWith("User: "))
+                {
+                    lastUserMessage = lines[i].Substring(6).Trim();
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(lastUserMessage))
+            {
+                return $"I understand you're asking about \"{lastUserMessage}\". [Mock Mode]";
+            }
             return "I understand your request. [Mock Mode]";
         }
 
