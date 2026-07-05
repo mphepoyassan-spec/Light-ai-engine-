@@ -76,11 +76,11 @@ public class ChatController : ControllerBase
             var prompt = _tokenSaver.OptimizePrompt(trimmed);
 
             var fullResponse = _modelLoader.Predict(prompt);
-            var words = fullResponse.Split(' ');
+            var words = System.Text.RegularExpressions.Regex.Split(fullResponse, @"(?<=\s)");
 
             foreach (var word in words)
             {
-                var chunk = new { chunk = word + " ", done = false };
+                var chunk = new { chunk = word, done = false };
                 await Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk)}\n\n");
                 await Response.Body.FlushAsync();
                 await Task.Delay(50);
