@@ -22,6 +22,14 @@ public class TokenSaverTests
     }
 
     [Fact]
+    public void CleanText_PreservesLeadingPunctuation()
+    {
+        var ts = new TokenSaver();
+        var result = ts.CleanText("!help");
+        Assert.Equal("!help", result);
+    }
+
+    [Fact]
     public void TrimContext_Works()
     {
         var ts = new TokenSaver(2);
