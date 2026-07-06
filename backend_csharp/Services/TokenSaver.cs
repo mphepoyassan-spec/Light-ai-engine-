@@ -28,8 +28,8 @@ public class TokenSaver
         // Normalize redundant punctuation
         text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
 
-        // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        // Remove leading non-word characters (except common command prefixes)
+        text = Regex.Replace(text, @"^[^a-zA-Z0-9!/@#$]+", "");
 
         return text.Trim();
     }

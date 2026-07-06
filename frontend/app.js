@@ -69,21 +69,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.message || 'Server error');
             }
 
-            hideTyping();
-
             // Create a bubble for the assistant response
             const assistantBubble = addMessage('', 'assistant');
             let fullText = '';
+            let lineBuffer = '';
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+
+            hideTyping();
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                const chunk = decoder.decode(value, { stream: true });
+                lineBuffer += chunk;
+
+                let lines = lineBuffer.split('\n');
+                lineBuffer = lines.pop(); // Keep the last partial line in the buffer
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
@@ -94,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             assistantBubble.textContent = fullText;
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         } catch (e) {
-                            console.error('Error parsing SSE chunk', e);
+                            console.error('Error parsing SSE chunk', e, line);
                         }
                     }
                 }
