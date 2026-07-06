@@ -35,4 +35,12 @@ public class TokenSaverTests
         Assert.Equal(2, result.Count);
         Assert.Equal("2", result[0].Content);
     }
+
+    [Fact]
+    public void CleanText_PreservesCommandPrefixes()
+    {
+        var ts = new TokenSaver();
+        Assert.Equal("!help", ts.CleanText("!help"));
+        Assert.Equal("/clear", ts.CleanText("/clear"));
+    }
 }
