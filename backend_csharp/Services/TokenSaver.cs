@@ -22,14 +22,15 @@ public class TokenSaver
             text = Regex.Replace(text, $@"\s*\b{word}\b\s*", " ", RegexOptions.IgnoreCase);
         }
 
-        // Normalize whitespace
-        text = Regex.Replace(text, @"\s+", " ").Trim();
+        // Normalize whitespace (preserving single newlines)
+        text = Regex.Replace(text, @"[^\S\r\n]+", " ");
+        text = Regex.Replace(text, @"\n{2,}", "\n");
 
         // Normalize redundant punctuation
         text = Regex.Replace(text, @"([!?.,]){2,}", "$1");
 
-        // Remove leading non-word characters
-        text = Regex.Replace(text, @"^\W+", "");
+        // Remove leading non-word characters except ! and /
+        text = Regex.Replace(text, @"^[^\w!/]+", "");
 
         return text.Trim();
     }

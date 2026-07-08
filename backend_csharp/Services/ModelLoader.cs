@@ -41,7 +41,18 @@ public class ModelLoader
     {
         if (!_isReady || _session == null)
         {
-            return "I understand your request. [Mock Mode]";
+            // Extract the last user message for a more dynamic mock response
+            var lastUserMessage = "your request";
+            var lines = text.Split('\n');
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                if (lines[i].StartsWith("User: "))
+                {
+                    lastUserMessage = lines[i].Substring(6).Trim();
+                    break;
+                }
+            }
+            return $"I understand you said: '{lastUserMessage}'. [Mock Mode]";
         }
 
         // Real inference logic would go here if we had the model signature

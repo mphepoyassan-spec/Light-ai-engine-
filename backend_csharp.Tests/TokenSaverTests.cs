@@ -35,4 +35,22 @@ public class TokenSaverTests
         Assert.Equal(2, result.Count);
         Assert.Equal("2", result[0].Content);
     }
+
+    [Fact]
+    public void CleanText_PreservesLeadingPunctuation()
+    {
+        var ts = new TokenSaver();
+        Assert.Equal("!hello", ts.CleanText("!hello"));
+        Assert.Equal("/help", ts.CleanText("/help"));
+    }
+
+    [Fact]
+    public void CleanText_PreservesNewlines()
+    {
+        var ts = new TokenSaver();
+        var input = "Line 1\nLine 2";
+        var result = ts.CleanText(input);
+        Assert.Contains("\n", result);
+        Assert.Equal("Line 1\nLine 2", result);
+    }
 }

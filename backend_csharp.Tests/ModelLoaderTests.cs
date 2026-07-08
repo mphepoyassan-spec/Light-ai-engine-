@@ -19,4 +19,18 @@ public class ModelLoaderTests
 
         Assert.Contains("[Mock Mode]", result);
     }
+
+    [Fact]
+    public void Predict_MockMode_ExtractsLastUserMessage()
+    {
+        var settings = new ModelSettings { ModelPath = "non_existent.onnx" };
+        var options = Options.Create(settings);
+        var loader = new ModelLoader(options);
+        loader.Load();
+
+        var prompt = "User: Hello\nAI: Hi\nUser: How are you?\nAI:";
+        var result = loader.Predict(prompt);
+
+        Assert.Contains("I understand you said: 'How are you?'", result);
+    }
 }
